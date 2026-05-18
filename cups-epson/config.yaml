@@ -1,0 +1,21 @@
+name: "CUPS (Epson ESC/P-R 2)"
+version: "4.2.3.4-epson1"
+slug: cups_epson
+description: "MaxWinterstein CUPS add-on with Epson's official ESC/P-R 2 driver (ET-8550 and other 2018+ Epson photo printers)."
+url: "https://github.com/Darktex/ha-cups-epson"
+arch:
+  - amd64
+usb: true
+init: false
+hassio_api: true
+homeassistant_api: true
+host_network: true
+ports:
+  631/tcp: 631
+  631/udp: 631
+ports_description:
+  631/tcp: For other devices on the local network to print to this server
+  631/udp: For other devices on the local network to print to this server
+map:
+  - config:rw
+stage: experimental

@@ -1,0 +1,2 @@
+build_from:
+  amd64: ghcr.io/maxwinterstein/homeassistant-addon-cups-amd64:4.2.3.4
