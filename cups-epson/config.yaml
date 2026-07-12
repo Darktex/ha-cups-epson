@@ -1,5 +1,5 @@
 name: "CUPS (Epson ESC/P-R 2)"
-version: "4.2.3.4-epson1"
+version: "4.2.3.4-epson2"
 slug: cups_epson
 description: "MaxWinterstein CUPS add-on with Epson's official ESC/P-R 2 driver (ET-8550 and other 2018+ Epson photo printers)."
 url: "https://github.com/Darktex/ha-cups-epson"

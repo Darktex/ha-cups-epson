@@ -9,3 +9,13 @@ RUN set -eux; \
     rm -f /tmp/escpr2.deb; \
     test -x /opt/epson-inkjet-printer-escpr2/cups/lib/filter/epson-escpr2; \
     test -f /opt/epson-inkjet-printer-escpr2/ppds/Epson/Epson-ET-8550_Series-epson-inkjet-printer-escpr2.ppd.gz
+
+# media-guard: wrap the ipp backend (and its http/https/ipps symlinks) to
+# refuse jobs whose media size+type matches no tray registered on the printer
+# panel — the ET-8550 firmware otherwise stalls for hours, then rescales the
+# page and tiles it across multiple sheets. See media-guard.sh for details.
+COPY media-guard.sh /tmp/media-guard.sh
+RUN set -eux; \
+    mv /usr/lib/cups/backend/ipp /usr/lib/cups/backend/ipp.real; \
+    install -m 0755 -o root -g root /tmp/media-guard.sh /usr/lib/cups/backend/ipp; \
+    rm /tmp/media-guard.sh
