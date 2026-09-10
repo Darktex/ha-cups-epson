@@ -9,8 +9,8 @@
 # impression). Root-caused 2026-07-09/11. The only safe behavior is to refuse
 # mismatched jobs up front, before any data reaches the printer.
 #
-# Behavior: compares the job's requested media size + media type against the
-# printer's live media-col-ready. Exact match (size within 0.5 mm, identical
+# Behavior: compares the job's requested media size + media type (+ tray, when
+# the job names one other than auto) against the printer's live media-col-ready. Exact match (size within 0.5 mm, identical
 # IPP media-type keyword) -> hand off to the real backend. No match -> cancel
 # the job (exit 5 = CUPS_BACKEND_CANCEL) with an ERROR naming what IS
 # registered. Fails OPEN (passes through) if anything is unparseable or the
@@ -109,6 +109,14 @@ if [ -z "$REQ_X" ] && [ -r "$PPDFILE" ]; then
     [ -n "$DEFSIZE" ] && ppd_size_lookup "$DEFSIZE"
 fi
 
+# ---- requested media source (tray) -> IPP keyword; empty/auto = any ---------
+REQ_SRC=$(grep -oE '(^| )media-source=[^ }]+' <<<"$OPTS" | head -1 | cut -d= -f2)
+if [ -z "$REQ_SRC" ]; then
+    SLOT=$(grep -oE '(^| )InputSlot=[^ ]+' <<<"$OPTS" | head -1 | cut -d= -f2)
+    [ -n "$SLOT" ] && REQ_SRC=$(ppd_choice_to_keyword "$SLOT")
+fi
+[ "$REQ_SRC" = auto ] && REQ_SRC=""
+
 if [ -z "$REQ_X" ] || [ -z "$REQ_Y" ] || [ -z "$REQ_TYPE" ]; then
     echo "WARNING: [media-guard] could not determine job media (size='$REQ_X x $REQ_Y' type='$REQ_TYPE'); letting job through unchecked" >&2
     run_real "unparseable job media"
@@ -135,7 +143,8 @@ while read -r ENTRY; do
     case "$REGISTERED" in *"$DESC"*) ;; *) REGISTERED="${REGISTERED:+$REGISTERED, }$DESC" ;; esac
     DX=$((REQ_X - EX)); DX=${DX#-}
     DY=$((REQ_Y - EY)); DY=${DY#-}
-    if [ "$DX" -le 50 ] && [ "$DY" -le 50 ] && [ "$ET" = "$REQ_TYPE" ]; then
+    if [ "$DX" -le 50 ] && [ "$DY" -le 50 ] && [ "$ET" = "$REQ_TYPE" ] \
+       && { [ -z "$REQ_SRC" ] || [ "$ES" = "$REQ_SRC" ]; }; then
         MATCHED=1
     fi
 done < <(tr '{' '\n' <<<"$READY" | grep 'x-dimension')
@@ -156,7 +165,7 @@ if [ "$MATCHED" = 1 ]; then
     run_real "media matches registered tray"
 fi
 
-MSG="[media-guard] REFUSING job: requested $(hundredths_to_in "$REQ_X")x$(hundredths_to_in "$REQ_Y")in type '$REQ_TYPE' matches NO tray registered on the printer panel (registered: ${REGISTERED:-none}). On the ET-8550 this mismatch causes an hours-long silent hold and the page being rescaled and tiled across sheets. Fix the printer LCD paper registration or the job's PageSize/MediaType. Emergency bypass: touch /etc/cups/no_media_guard in the addon container"
+MSG="[media-guard] REFUSING job: requested $(hundredths_to_in "$REQ_X")x$(hundredths_to_in "$REQ_Y")in type '$REQ_TYPE'${REQ_SRC:+ from tray '$REQ_SRC'} matches NO tray registered on the printer panel (registered: ${REGISTERED:-none}). On the ET-8550 this mismatch causes an hours-long silent hold and the page being rescaled and tiled across sheets. Fix the printer LCD paper registration or the job's PageSize/MediaType. Emergency bypass: touch /etc/cups/no_media_guard in the addon container"
 echo "ERROR: $MSG" >&2
 if [ -n "$MEDIA_GUARD_DRYRUN" ]; then
     echo "DRYRUN FAIL (would cancel job)"
