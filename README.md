@@ -49,3 +49,17 @@ filenames in `/data/cups/ssl/`. To (re)generate it:
 
 then copy `cups-server.crt`/`.key` to `/data/cups/ssl/<name>.crt`/`.key` for
 each SAN name and restart the add-on.
+
+## Second trigger: printer-side scaling (found 2026-09-09)
+
+A fully media-matched job can still hit the ET-8550's pathological path if the
+printer is asked to scale: with `print-scaling` = `auto`/`fit`/`fill` the
+firmware accepts the raster at a few bytes per minute (paper advancing one band
+per minute, kernel send queue full) and, in July 2026, produced 2–3× magnified
+output tiled across sheets. With `print-scaling=none` the identical job prints
+in under a minute. Scaling is already performed host-side by cups-filters, so
+the printer must never be asked to scale. Two layers enforce this:
+
+- queue default (persisted server config): `lpadmin -p <queue> -o print-scaling-default=none`
+- `media-guard` rewrites any client-supplied `print-scaling` to `none` (logged
+  at INFO) before handing the job to the real backend.

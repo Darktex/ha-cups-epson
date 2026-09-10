@@ -16,6 +16,14 @@
 # registered. Fails OPEN (passes through) if anything is unparseable or the
 # printer can't be queried, so the guard can never brick normal printing.
 #
+# SECOND RULE (2026-09-09): printer-side scaling is always disabled. The host
+# pipeline (cups-filters pdftopdf) already applies the job's print-scaling, so
+# forwarding it to the printer is redundant — and on the ET-8550 any value
+# other than 'none' engages the firmware scaler, which accepts data at a few
+# bytes per minute (paper advancing one band per minute) and, in July 2026,
+# produced the 2-3x magnified, tiled output. The guard rewrites print-scaling
+# to 'none' (or adds it) before handing the job to the real backend.
+#
 # Bypass:  touch /etc/cups/no_media_guard   (persistent)
 #          touch /tmp/no_media_guard        (until addon restart)
 # Dry run: MEDIA_GUARD_DRYRUN=1 <this script> <argv...>  (prints verdict; no
@@ -133,6 +141,18 @@ while read -r ENTRY; do
 done < <(tr '{' '\n' <<<"$READY" | grep 'x-dimension')
 
 if [ "$MATCHED" = 1 ]; then
+    # Normalize print-scaling for the printer: host-side scaling is already
+    # applied; the ET-8550 firmware scaler must not be engaged.
+    PS=$(grep -oE '(^| )print-scaling=[^ ]+' <<<"$OPTS" | head -1 | cut -d= -f2)
+    if [ -z "$PS" ]; then
+        OPTS="$OPTS print-scaling=none"
+        echo "INFO: [media-guard] print-scaling absent -> none (scaling is done host-side; ET-8550 firmware scaler stalls)" >&2
+    elif [ "$PS" != none ]; then
+        OPTS=$(sed -E 's/(^| )print-scaling=[^ ]+/\1print-scaling=none/' <<<"$OPTS")
+        echo "INFO: [media-guard] print-scaling=$PS -> none (scaling is done host-side; ET-8550 firmware scaler stalls)" >&2
+    fi
+    ARGS[4]="$OPTS"
+    [ -n "$MEDIA_GUARD_DRYRUN" ] && echo "DRYRUN effective options: ${ARGS[4]}"
     run_real "media matches registered tray"
 fi
 
