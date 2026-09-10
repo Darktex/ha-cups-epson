@@ -28,3 +28,10 @@ and running two makes the add-on's hostname drift (`-2`, `-3`, …), which break
 IPPS/Bonjour printer discovery on macOS/iOS because the advertised host stops
 matching the TLS certificate. If your LAN interface has a different name, set
 the build arg accordingly.
+
+The CUPS `ServerName` must match the mDNS host the share is advertised under
+(`<container-hostname>.local`, i.e. `97a3f4ca-cups-epson.local` for this
+install) so the TLS certificate cupsd presents on IPPS validates for Bonjour
+clients. It is runtime server config (persisted in `/data/cups/cupsd.conf`):
+
+    ServerName 97a3f4ca-cups-epson.local
