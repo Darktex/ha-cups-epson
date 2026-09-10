@@ -63,3 +63,24 @@ the printer must never be asked to scale. Two layers enforce this:
 - queue default (persisted server config): `lpadmin -p <queue> -o print-scaling-default=none`
 - `media-guard` rewrites any client-supplied `print-scaling` to `none` (logged
   at INFO) before handing the job to the real backend.
+
+## macOS clients
+
+One-shot setup of a Mac (queue via Bonjour/IPPS, photo defaults, presets):
+
+    curl -fsSL https://raw.githubusercontent.com/Darktex/ha-cups-epson/main/tools/setup-mac-client.sh | bash
+
+Presets only (`tools/setup-mac-presets.sh`) — each pins paper size + type +
+quality so a preset can never produce a tray mismatch:
+
+| Preset | Size | Paper | Quality |
+|---|---|---|---|
+| Foto 4x6 / Foto 4x6 (con bordo) | 4×6 borderless / bordered | Ultra Glossy | High |
+| Foto 5x7 / Foto 5x7 (con bordo) | 5×7 borderless / bordered | Ultra Glossy | High |
+| Foto Letter / Foto Letter (senza bordo) | Letter bordered / borderless | Ultra Glossy | High |
+| Documento Letter | Letter | Plain (rear tray) | Normal |
+
+Tray is left on Auto: the printer picks it from size + type, and the add-on's
+media-guard verifies the combination against the panel registrations first.
+Borderless sizes are enlarged ~3 % by the printer (Epson "expansion"); use the
+bordered variant when exact geometry matters.
