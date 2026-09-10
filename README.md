@@ -18,3 +18,13 @@ A single Dockerfile layer that pulls the Epson `epson-inkjet-printer-escpr2_1.2.
 
 - amd64 only. The Epson driver mirror doesn't ship an aarch64 build.
 - Pinned to upstream version `4.2.3.4`. Bump `build.yaml` and `config.yaml` together to track newer upstream releases.
+
+## mDNS / Bonjour notes
+
+The add-on's avahi is configured as a plain responder confined to the LAN
+interface (`MDNS_INTERFACE` build arg, default `enp1s0`) with the reflector
+disabled — Home Assistant's `hassio_multicast` is already the host's reflector,
+and running two makes the add-on's hostname drift (`-2`, `-3`, …), which breaks
+IPPS/Bonjour printer discovery on macOS/iOS because the advertised host stops
+matching the TLS certificate. If your LAN interface has a different name, set
+the build arg accordingly.

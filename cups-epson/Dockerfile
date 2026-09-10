@@ -19,3 +19,22 @@ RUN set -eux; \
     mv /usr/lib/cups/backend/ipp /usr/lib/cups/backend/ipp.real; \
     install -m 0755 -o root -g root /tmp/media-guard.sh /usr/lib/cups/backend/ipp; \
     rm /tmp/media-guard.sh
+
+# mDNS: the add-on runs on the host network next to Home Assistant's own
+# system-wide mDNS reflector (hassio_multicast). The base image's avahi is
+# ALSO configured as a reflector, so the two echo each other's records: the
+# add-on's avahi hears its own hostname come back with different data,
+# declares a conflict and renames itself (-2, -3, ...). That breaks Bonjour
+# "Add Printer" on macOS/iOS because the advertised host no longer matches
+# the TLS certificate (valid for <hostname>.local only). Fix: be a plain
+# responder (one reflector per host), confined to the LAN interface, IPv4.
+ARG MDNS_INTERFACE=enp1s0
+RUN set -eux; \
+    f=/etc/avahi/avahi-daemon.conf; \
+    sed -i \
+        -e 's/^enable-reflector=.*/enable-reflector=no/' \
+        -e 's/^use-ipv6=.*/use-ipv6=no/' \
+        -e "s/^\[server\]/[server]\nallow-interfaces=${MDNS_INTERFACE}/" \
+        "$f"; \
+    grep -qE '^allow-interfaces=' "$f"; \
+    grep -qE '^enable-reflector=no' "$f"
