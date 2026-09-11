@@ -27,6 +27,9 @@ fi
 
 echo "== 3. defaults: Ultra Glossy / High / tray Auto"
 lpadmin -p "$QUEUE" -o MediaType=PhotographicHighGloss -o cupsPrintQuality=High -o InputSlot=Auto
+# paper-out / offline: keep retrying instead of stopping the queue (macOS default stop-printer
+# silently parks every following job until someone clicks Resume)
+lpadmin -p "$QUEUE" -o printer-error-policy=retry-job
 lpoptions -p "$QUEUE" -l | grep -E "InputSlot|MediaType|cupsPrintQuality" | grep -oE "^[^/]+|\*[^ ]+" | paste - - | sed 's/^/   /'
 
 echo "== 4. presets (Foto 4x6 / 5x7 / Letter, Documento Letter)"
